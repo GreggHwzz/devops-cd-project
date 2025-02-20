@@ -1,0 +1,42 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_IMAGE = 'your-team/go-app'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Clone') {
+            steps {
+                git 'https://github.com/your-repo/devops-efrei-project-2024.git'
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                dir('app') {
+                    script {
+                        docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    }
+                }
+            }
+        }
+        
+        stage('Run Container') {
+            steps {
+                script {
+                    // Stop any existing container
+                    sh 'docker rm -f go-app || true'
+                    
+                    // Run new container
+                    sh "docker run -d -p 8080:8080 --name go-app ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    
+                    // Basic test
+                    sh 'sleep 5' // Wait for container to start
+                    sh 'curl http://localhost:8080/whoami || exit 1'
+                }
+            }
+        }
+    }
+}
