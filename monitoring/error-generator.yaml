@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: error-generator
+  namespace: production
+spec:
+  containers:
+  - name: error-generator
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args:
+      - >
+        while true; do
+          echo "This is a normal log message";
+          echo "This is an error log message";
+          sleep 10;
+        done
