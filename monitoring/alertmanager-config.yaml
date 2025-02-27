@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-prometheus-kube-prometheus-alertmanager
+  namespace: default
+stringData:
+  alertmanager.yaml: |
+    global:
+      resolve_timeout: 5m
+      smtp_smarthost: 'smtp.gmail.com:587'
+      smtp_from: 'gtallaapro@gmail.com'
+      smtp_auth_username: 'gtallaapro@gmail.com'
+      smtp_auth_password: '25ad0206303'
+      smtp_require_tls: true
+    route:
+      group_by: ['alertname', 'job']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'team-emails'
+      routes:
+      - match:
+          alertname: Watchdog
+        receiver: 'null'
+    receivers:
+    - name: 'null'
+    - name: 'team-emails'
+      email_configs:
+      - to: 'gregory.tallaa@efrei.net'
+        send_resolved: true
+        html: |
+          {{ define "email.default.subject" }}[ALERT] VAN MORTAL {{ .CommonLabels.alertname }}{{ end }}
+          {{ define "email.default.html" }}
+          <h1>Alert: {{ .CommonLabels.alertname }}</h1>
+          <p>Team: VAN MORTAL</p>
+          <p>Description: {{ .CommonAnnotations.description }}</p>
+          <p>Severity: {{ .CommonLabels.severity }}</p>
+          <p>Details:</p>
+          <ul>
+          {{ range .Alerts }}
+            <li>{{ .Annotations.description }}</li>
+          {{ end }}
+          </ul>
+          {{ end }}
