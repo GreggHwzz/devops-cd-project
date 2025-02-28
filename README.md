@@ -69,33 +69,33 @@ For this part of the project, you need to have installed Docker, Jenkins and Kub
 
 You can excute the Go application locally with these commands:  
 
-    # Exécuter l'application en local
+    # Run the app locally
     go run main.go
 
-    # Test dans un autre terminal
+    # Test the output of the app
     curl http://<your local path>/whoami
 
 #### Creating a Dockerfile
 
-    # Utiliser l'image officielle Go
+    # Use offical Go image
     FROM golang:1.21-alpine
 
-    # Définir le répertoire de travail
+    # Set the working directory
     WORKDIR /app
 
-    # Copier le fichier main.go
+    # Copy main.go file
     COPY main.go .
 
-    # Initialiser le module Go
+    # Initialize the Go module
     RUN go mod init devops-cd-project
 
-    # Compiler l'application
+    # Compile the app
     RUN go build -o main .
 
-    # Exposer le port 8080
+    # Expose port 8080
     EXPOSE 8080
 
-    # Commande pour démarrer l'application
+    # Command to start the application
     CMD ["./main"]
 
 
