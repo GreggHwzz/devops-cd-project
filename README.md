@@ -26,7 +26,7 @@
 
 ## Introduction
 
-Our Goal in this project is to build a Jenkins CI/CD pipeline and deploy it as a Docker image to a Minikube Kubernetes.   
+Our Goal in this project is to build a Jenkins CI/CD pipeline and deploy it as a Docker image to a Minikube Kubernetes, then monitor alerts and logs through Prometheus, Grafana and Loki.   
 For this project, a Go application was used to construct, test and monitor this infrastructure.
 
 ## Reflexion on Achieving Full Continuous Development
@@ -59,7 +59,7 @@ The application is deployed using Kubernetes deployment and service YAML files, 
 
 ### Setup and Prerequisites
 
-For this part of the project, you need to have installed Docker, Jenkins and Kubernetes
+For this part of the project, you need to have installed **Docker**, **Jenkins** and **Kubernetes**.
 
 ### Building an Image of the App
 
@@ -124,13 +124,13 @@ curl http://localhost:8080/whoami
 
 ### Deploying the application onto Kubernetes Minikube
 
-#### Start minikube 
+#### Start Minikube 
 
 ```bash
 minikube start
 ```
 
-#### Create the namespaces for dev and prod
+#### Create the Namespaces for dev and prod
 
 ```bash
 kubectl apply -f kubernetes/namespaces.yaml
@@ -144,14 +144,14 @@ kubectl apply -f kubernetes/namespaces.yaml
 minikube image load go-app:v1
 ```
 
-#### Deploy in the development environlment
+#### Deploy in the Development Environment
 
 ```bash
 kubectl apply -f kubernetes/dev/deployment.yaml
 kubectl apply -f kubernetes/dev/service.yaml
 ```
 
-#### Deploy in the production environlment
+#### Deploy in the Production Environment
 
 ```bash
 kubectl apply -f kubernetes/prod/deployment.yaml
@@ -222,7 +222,7 @@ To test the "PodNotRunning" alert set up, we can create a pod with a non-existen
 ```bash
 kubectl run test-pod --image=non-existent-image
 ```
-This will trigger the alert because Kubernetes will be unable to start the pod.
+> This will trigger the alert because Kubernetes will be unable to start the pod.
 
 To test the "HighMemoryUsage" alert set up, we can create a pod with a  image and run :  
 
@@ -230,7 +230,7 @@ To test the "HighMemoryUsage" alert set up, we can create a pod with a  image an
 kubectl run memory-test --image=progrium/stress -- -m 1 --vm-bytes 512M --timeout 300s
 ```
 
-This will trigger the alert as the image asks for a lot of memory.
+> This will trigger the alert as the image asks for a lot of memory.
 
 To check the alerts, we access them on promotheus by running :  
 
@@ -246,7 +246,7 @@ Result is on `http://localhost:9090/query` by executing the query `ALERTS`:
 
 ### Setup and Prerequisites
 
-#### Installer Loki Stack via Helm
+#### Install the Loki Stack via Helm
 
 ```bash
 helm install loki grafana/loki-stack -f values-loki.yaml --set grafana.enabled=false
@@ -254,26 +254,26 @@ helm install loki grafana/loki-stack -f values-loki.yaml --set grafana.enabled=f
 
 ### Configuring the Loki
 
-#### Configuration as a Grafana data source
+#### Configuration as a Grafana Data Source
 
 ```bash
 kubectl apply -f update-datasources.yaml
 kubectl rollout restart deployment grafana
 ```
 
-#### Déployment of the dashboard for the errors logs
+#### Deployment of the Dashboard for the Errors Logs
 
 ```bash
 kubectl apply -f dashboard-configmap.yaml
 ```
 
-#### Déployment of a pod generating logs for tests
+#### Deployment of a Pod Generating Logs for Tests
 
 ```bash
 kubectl apply -f error-generator.yaml -n production
 ```
 
-#### Command to generate a custom log for tests   
+#### Command to Generate a Custom Log for Tests   
 
 ```bash
 kubectl exec -n production error-generator -- sh -c 'echo "CUSTOM ERROR: test message $(date)"'
@@ -292,30 +292,42 @@ kubectl logs -n production error-generator
 
 ### Visualise Query Results
 
-#### How to
+#### Steps
 
-1. Accéder à Grafana via l'URL ou le port-forward
-2. Se connecter avec les identifiants (admin/admin par défaut)
-3. Pour visualiser les logs via le dashboard:
-   - Dans le menu de gauche, sélectionner "Dashboards"
-   - Trouver et ouvrir le dashboard "Production Error Logs"
+1. Access à Grafana via URL or push-forward
+```bash
+minikube service grafana --url
+kubectl port-forward svc/grafana 3000:80
+#After running the port forward command, open http://localhost:3000 
+```
+2. Connect with the identification `admin/admin` by defaut
+
+3. To visualise logs via the Dashboard:
+   - In the left menu, select "Dashboards"
+   - Find and open the dashboard "Production Error Logs"
    
-4. Pour visualiser les logs via Explore:
-   - Dans le menu de gauche, cliquer sur "Explore"
-   - Sélectionner "Loki" comme source de données
-   - Entrer la requête: `{namespace="production"} |= "error"`
-   - Cliquer sur "Run Query"
+4. To visualiser logs via Explore:
+   - In the left menu, click on "Explore"
+   - Select "Loki" as data source
+   - Type in the request: `{namespace="production"} |= "error"`
+   - Click on sur "Run Query"
 
-#### Useful Loki querys
+#### Useful Loki Querys
 
-- Tous les logs d'erreur dans le namespace production:
-  `{namespace="production"} |= "error"`
+All error logs in production:
+  ```bash
+  {namespace="production"} |= "error"
+  ```
 
-- Logs d'erreur personnalisés:
-  `{namespace="production"} |= "CUSTOM ERROR"`
+Customized error logs:
+  ```bash
+  {namespace="production"} |= "CUSTOM ERROR"
+  ```
 
-- Logs d'erreur sans les messages normaux:
-  `{namespace="production"} |= "error" !~ "normal"`
+Error logs without normal messages:
+  ```bash
+  {namespace="production"} |= "error" !~ "normal"
+  ```
 
 ## Conclusion
 
