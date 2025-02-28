@@ -314,20 +314,14 @@ kubectl port-forward svc/grafana 3000:80
 
 #### Useful Loki Querys
 
-All error logs in production:
-  ```bash
-  {namespace="production"} |= "error"
-  ```
+All error logs in production:  
+`{namespace="production"} |= "error"`
 
-Customized error logs:
-  ```bash
-  {namespace="production"} |= "CUSTOM ERROR"
-  ```
+Customized error logs:  
+`{namespace="production"} |= "CUSTOM ERROR"`
 
-Error logs without normal messages:
-  ```bash
-  {namespace="production"} |= "error" !~ "normal"
-  ```
+Error logs without normal messages:  
+`{namespace="production"} |= "error" !~ "normal"`
 
 ## Conclusion
 
