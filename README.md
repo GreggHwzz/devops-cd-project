@@ -20,7 +20,7 @@
 > [**Part 3 : Logs Management**](#part-3--logs-management)  
 > 1. [Setup and Prerequisites](#setup-and-prerequisites-2)  
 > 1. [Configuring the Loki](#configuring-the-loki)  
-> 1. [Query Results](#query-results)  
+> 1. [Visualise Query Results](#visualise-query-results)  
 >
 > [**Conclusion**](#conclusion)  
 
