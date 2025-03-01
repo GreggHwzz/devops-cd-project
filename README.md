@@ -324,7 +324,7 @@ Error logs without normal messages:
 `{namespace="production"} |= "error" !~ "normal"`
 
 ## Conclusion
-
+In this project, we successfully built, deployed, and monitored a Go application within a Docker and Kubernetes infrastructure, using a Jenkins CI/CD pipeline, Minikube for local Kubernetes management, and integrated monitoring and log management too
 
 
 
