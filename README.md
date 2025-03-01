@@ -73,32 +73,9 @@ You can excute the Go application locally with these commands:
 go run main.go
 
 # Test the output of the app
-curl http://<your local path>/whoami
+curl http://localhost:8080/whoami
 ```
 
-#### Creating a Dockerfile
-```bash
-# Use offical Go image
-FROM golang:1.21-alpine
-
-# Set the working directory
-WORKDIR /app
-
-# Copy main.go file
-COPY main.go .
-
-# Initialize the Go module
-RUN go mod init devops-cd-project
-
-# Compile the app
-RUN go build -o main .
-
-# Expose port 8080
-EXPOSE 8080
-
-# Command to start the application
-CMD ["./main"]
-```
 
 
 #### Build the image

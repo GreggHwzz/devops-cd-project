@@ -2,14 +2,15 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_IMAGE = 'your-team/go-app'
+        DOCKER_IMAGE = 'mortal-van/go-app'
         DOCKER_TAG = "${BUILD_NUMBER}"
+        MINIKUBE_IP = sh(script: 'minikube ip', returnStdout: true).trim()
     }
     
     stages {
         stage('Clone') {
             steps {
-                git 'https://github.com/your-repo/devops-efrei-project-2024.git'
+                git 'https://github.com/GreggHwzz/devops-cd-project.git'
             }
         }
         
@@ -23,7 +24,7 @@ pipeline {
             }
         }
         
-        stage('Run Container') {
+        stage('Run Container for Testing') {
             steps {
                 script {
                     // Stop any existing container
@@ -37,6 +38,159 @@ pipeline {
                     sh 'curl http://localhost:8080/whoami || exit 1'
                 }
             }
+        }
+        
+        stage('Load Image to Minikube') {
+            steps {
+                script {
+                    // Save the image to a tar file
+                    sh "docker save ${DOCKER_IMAGE}:${DOCKER_TAG} -o go-app-image.tar"
+                    
+                    // Load the image into Minikube
+                    sh "minikube image load go-app-image.tar"
+                    
+                    // Tag the image as go-app:v1 in Minikube
+                    sh "minikube ssh -- docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} go-app:v1"
+                    
+                    // Clean up the tar file
+                    sh "rm go-app-image.tar"
+                }
+            }
+        }
+        
+        stage('Deploy to Development') {
+            steps {
+                script {
+                    // Create namespaces if they don't exist
+                    sh "kubectl apply -f kubernetes/namespaces.yaml"
+                    
+                    // Deploy to development environment
+                    sh "kubectl apply -f kubernetes/dev/deployment.yaml"
+                    sh "kubectl apply -f kubernetes/dev/service.yaml"
+                    
+                    // Wait for deployment to be ready
+                    sh "kubectl rollout status deployment/go-app -n development"
+                }
+            }
+        }
+        
+        stage('Test Development Deployment') {
+            steps {
+                script {
+                    // Get URL for the service
+                    def devUrl = sh(script: "minikube service go-app-service -n development --url", returnStdout: true).trim()
+                    
+                    // Test the API
+                    sh "curl ${devUrl}/whoami || exit 1"
+                    
+                    echo "Development deployment successful and tested!"
+                }
+            }
+        }
+        
+        stage('Deploy to Production') {
+            steps {
+                // This could be controlled by user input for manual approval
+                input message: 'Deploy to production?', ok: 'Yes'
+                
+                script {
+                    // Deploy to production environment
+                    sh "kubectl apply -f kubernetes/prod/deployment.yaml"
+                    sh "kubectl apply -f kubernetes/prod/service.yaml"
+                    
+                    // Wait for deployment to be ready
+                    sh "kubectl rollout status deployment/go-app -n production"
+                }
+            }
+        }
+        
+        stage('Test Production Deployment') {
+            steps {
+                script {
+                    // Get URL for the service
+                    def prodUrl = sh(script: "minikube service go-app-service -n production --url", returnStdout: true).trim()
+                    
+                    // Test the API
+                    sh "curl ${prodUrl}/whoami || exit 1"
+                    
+                    echo "Production deployment successful and tested!"
+                }
+            }
+        }
+        
+        stage('Configure Monitoring') {
+            steps {
+                script {
+                    // Add and update Helm repositories
+                    sh "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true"
+                    sh "helm repo add grafana https://grafana.github.io/helm-charts || true"
+                    sh "helm repo update"
+                    
+                    // Install Prometheus Stack
+                    sh "helm upgrade --install prometheus prometheus-community/kube-prometheus-stack -f values-prometheus.yaml || true"
+                    
+                    // Install Grafana (if not included in Prometheus Stack)
+                    sh "helm upgrade --install grafana grafana/grafana -f values-grafana.yaml || true"
+                    
+                    // Apply alert rules
+                    sh "kubectl apply -f pod-not-running-rule.yaml"
+                    sh "kubectl apply -f high-memory-usage-rule.yaml"
+                    
+                    // Apply AlertManager configuration
+                    sh "kubectl apply -f alertmanager-config.yaml"
+                }
+            }
+        }
+        
+        stage('Configure Logs Management') {
+            steps {
+                script {
+                    // Install Loki Stack
+                    sh "helm upgrade --install loki grafana/loki-stack -f values-loki.yaml --set grafana.enabled=false || true"
+                    
+                    // Configure Loki as a Grafana data source
+                    sh "kubectl apply -f update-datasources.yaml"
+                    sh "kubectl rollout restart deployment grafana"
+                    
+                    // Deploy error logs dashboard
+                    sh "kubectl apply -f dashboard-configmap.yaml"
+                    
+                    // Deploy error generator for testing
+                    sh "kubectl apply -f error-generator.yaml -n production"
+                }
+            }
+        }
+        
+        stage('Verification') {
+            steps {
+                script {
+                    // Verify deployments
+                    sh "kubectl get pods -n development"
+                    sh "kubectl get pods -n production"
+                    
+                    // Get Grafana URL
+                    def grafanaUrl = sh(script: "minikube service grafana --url", returnStdout: true).trim()
+                    
+                    echo "====== Deployment Complete ======"
+                    echo "Development API: ${sh(script: 'minikube service go-app-service -n development --url', returnStdout: true).trim()}"
+                    echo "Production API: ${sh(script: 'minikube service go-app-service -n production --url', returnStdout: true).trim()}"
+                    echo "Grafana Dashboard: ${grafanaUrl}"
+                    echo "Grafana credentials: admin/admin"
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            // Clean up test container
+            sh 'docker rm -f go-app || true'
+        }
+        success {
+            echo "Pipeline completed successfully!"
+        }
+        failure {
+            echo "Pipeline failed!"
         }
     }
 }
